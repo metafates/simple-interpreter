@@ -1,7 +1,7 @@
 import string as _string
 from enum import Enum, auto
 
-
+# <CONSTANTS>
 LETTERS = _string.ascii_letters
 DIGITS = _string.digits
 
@@ -12,12 +12,9 @@ MUL_OPERATOR = '*'
 DIV_OPERATOR = '/'
 REM_OPERATOR = '%'
 
-
 OPERATORS = (FN_OPERATOR, PLUS_OPERATOR, MINUS_OPERATOR,
              MUL_OPERATOR, DIV_OPERATOR, REM_OPERATOR)
-
 OPERATORS_CHARSET = set(''.join(OPERATORS))
-
 
 FN_KEYWORD = 'fn'
 KEYWORDS = (FN_KEYWORD,)
@@ -31,13 +28,12 @@ class TokenType(Enum):
     EOF = auto()
     LEFT_PAR = auto()
     RIGHT_PAR = auto()
+# </CONSTANTS>
 
 
-TokenValue = str
-
-
+# <TOKEN>
 class Token:
-    def __init__(self, token_type: TokenType, value: TokenValue = ""):
+    def __init__(self, token_type: TokenType, value: str = ""):
         self.type = token_type
         self.value = value
 
@@ -48,9 +44,15 @@ class Token:
 
     def __repr__(self):
         return self.__str__()
+# </TOKEN>
 
 
+# <LEXER>
 class Lexer:
+    char: str | None
+    pos: int
+    stream: str
+
     def __init__(self, stream: str):
         self.char = None
         self.pos = -1
@@ -133,6 +135,7 @@ class Lexer:
             self.advance()
 
         return identifier
+# </LEXER>
 
 
 a = Lexer("fn doubleIt x => x * 2")
