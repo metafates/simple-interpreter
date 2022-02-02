@@ -279,6 +279,13 @@ class Parser:
                     return expression
             case TokenType.IDENTIFIER:
                 self.advance()
+                # TODO: Check if it is function call (and maybe nested) or just identifier
+                if self.token.type is TokenType.IDENTIFIER:
+                    last_return = self.token
+                    ...
+                    while isinstance(last_return, Nodes.Identifier):
+                        ...
+
                 return Nodes.Identifier(token)
             case TokenType.KEYWORD:
                 self.advance()
@@ -324,7 +331,8 @@ class Parser:
         return left_operand
 # </Parser>
 
-a = Lexer("(1 + 2) * 3")
+
+a = Lexer("fn doStuff x y => (x + y) * y")
 tokens = a.tokenize()
 
 b = Parser(tokens)
