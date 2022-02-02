@@ -1,3 +1,4 @@
+from __future__ import annotations
 import string as _string
 from enum import Enum, auto
 
@@ -137,6 +138,75 @@ class Lexer:
         return identifier
 # </LEXER>
 
+# <NODES>
+class Nodes:
+
+    class Node:
+        def __init__(self, token: Token):
+            self.token = token
+
+        def __str__(self):
+            return str(self.token)
+
+        def __repr__(self):
+            return self.__str__()
+
+    class Number(Node):
+        def __init__(self, token: Token):
+            super().__init__(token)
+
+    class Identifier(Node):
+        def __init__(self, token: Token):
+            super().__init__(token)
+            self.name = self.token.value
+
+        def __str__(self):
+            return self.name
+
+    class BinOp(Node):
+        def __init__(self, left: Nodes.Node, op: Token, right: Nodes.Node):
+            super().__init__(op)
+            self.left = left
+            self.right = right
+
+        def __str__(self):
+            return f'({self.left}, {self.token}, {self.right})'
+
+    class VariableAssignment(Node):
+        def __init__(self, variable: Token, expression: Nodes.Node):
+            super().__init__(variable)
+            self.expression = expression
+
+        def __str__(self):
+            return f'({self.token} = {self.expression})'
+
+    class FunctionAssignment(Node):
+        def __init__(
+                self,
+                function: Token,
+                variables: list[Nodes.Identifier],
+                expression: Nodes.Node
+        ):
+            super().__init__(function)
+            self.variables = variables
+            self.expression = expression
+
+        def __str__(self):
+            variables_names = ' '.join(map(lambda v: v.name, self.variables))
+            return f'({self.token.value} [{variables_names}] = {self.expression})'
+
+    class FunctionCall(Node):
+        def __init__(self, function: Token, variables: list[Nodes.Identifier]):
+            super().__init__(function)
+            self.variables = variables
+
+        def __str__(self):
+            variables_names = ' '.join(map(lambda v: v.name, self.variables))
+            return f'({self.token.value}[{variables_names}])'
+# </NODES>
+
 
 a = Lexer("fn doubleIt x => x * 2")
-print(a.tokenize())
+tokens = a.tokenize()
+b = Nodes.FunctionAssignment(tokens[1], [Nodes.Identifier(tokens[2])], Nodes.BinOp(Nodes.Number(tokens[4]), tokens[5], Nodes.Identifier(tokens[6])))
+print(b)
