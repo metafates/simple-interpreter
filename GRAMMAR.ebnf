@@ -4,6 +4,7 @@ fn-operator     ::= '=>' ;
 fn-keyword      ::= 'fn' ;
 
 expression      ::= factor | expression operator expression ;
+term            ::= factor | expression operator expression ;
 factor          ::= number | identifier | assignment | '(' expression ')' | function-call ;
 assignment      ::= identifier '=' expression ;
 function-call   ::= fn-name { expression } ;
