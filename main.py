@@ -32,6 +32,8 @@ class TokenType(Enum):
     EOF = auto()
     LEFT_PAR = auto()
     RIGHT_PAR = auto()
+
+
 # </CONSTANTS>
 
 
@@ -48,6 +50,8 @@ class Token:
 
     def __repr__(self):
         return self.__str__()
+
+
 # </TOKEN>
 
 
@@ -75,31 +79,31 @@ class Lexer:
         tokens: list[Token] = []
 
         while self.char is not None:
-            match self.char:
-                case ' ':
-                    self.advance()
-                case parenthesis if parenthesis in ')(':
-                    is_left = parenthesis == '('
-                    t = Token(TokenType.LEFT_PAR if is_left else TokenType.RIGHT_PAR)
-                    tokens.append(t)
-                    self.advance()
-                case operator if operator in OPERATORS_CHARSET:
-                    operator = self.make_operator()
-                    token = Token(TokenType.OPERATOR, operator)
-                    tokens.append(token)
-                case number if number in DIGITS:
-                    number = self.make_number()
-                    token = Token(TokenType.NUMBER, number)
-                    tokens.append(token)
-                case keywordOrId if keywordOrId in LETTERS + '_':
-                    maybe_id = self.make_identifier()
-                    if maybe_id in KEYWORDS:
-                        token = Token(TokenType.KEYWORD, maybe_id)
-                    else:
-                        token = Token(TokenType.IDENTIFIER, maybe_id)
-                    tokens.append(token)
-                case _:
-                    raise Exception(f'Unknown Symbol {self.char}')
+            if self.char == ' ':
+                self.advance()
+            elif self.char in ')(':
+                is_left = self.char == '('
+                t = Token(TokenType.LEFT_PAR if is_left else TokenType.RIGHT_PAR)
+                tokens.append(t)
+                self.advance()
+            elif self.char in OPERATORS_CHARSET:
+                operator = self.make_operator()
+                token = Token(TokenType.OPERATOR, operator)
+                tokens.append(token)
+            elif self.char in DIGITS:
+                number = self.make_number()
+                token = Token(TokenType.NUMBER, number)
+                tokens.append(token)
+            elif self.char in LETTERS + '_':
+                maybe_id = self.make_identifier()
+                if maybe_id in KEYWORDS:
+                    token = Token(TokenType.KEYWORD, maybe_id)
+                else:
+                    token = Token(TokenType.IDENTIFIER, maybe_id)
+                tokens.append(token)
+            else:
+                raise Exception(f'Unknown Symbol {self.char}')
+
         eof = Token(TokenType.EOF)
         tokens.append(eof)
 
@@ -139,6 +143,8 @@ class Lexer:
             self.advance()
 
         return identifier
+
+
 # </LEXER>
 
 
@@ -235,10 +241,9 @@ class Nodes:
 
         # That's just bad...
         def __check_for_args_scope(self):
-            if len(set(self.arguments)) != len(self.arguments):
+            if len(set(map(lambda x: x.name, self.arguments))) != len(self.arguments):
                 raise Exception('Repeating arguments in function definition')
-            if len(self.expression.ids) != len(self.arguments):
-                print(self.expression.ids, self.arguments)
+            if not all(map(lambda x: x.name in map(lambda y: y.name, self.arguments), self.expression.ids)):
                 raise Exception('Unknown identifier in function body')
 
         def __str__(self):
@@ -259,6 +264,8 @@ class Nodes:
         def __str__(self):
             # arguments = ' '.join(map(lambda v: v.name, self.arguments))
             return f'({self.function.name}[{" ".join(map(str, self.arguments))}])'
+
+
 # </NODES>
 
 
@@ -290,53 +297,53 @@ class Parser:
     def factor(self) -> Nodes.Node | Nodes.Identifier:
         token = self.token
 
-        match token.type:
-            case TokenType.OPERATOR:
-                # Unary Operator
-                if token.value in (PLUS_OPERATOR, MINUS_OPERATOR):
-                    self.advance()
-                    factor = self.factor()
-                    return Nodes.UnaryOp(token, factor)
-
-                # Variable assign
-                elif token.value == EQ_OPERATOR:
-                    self.advance()
-                    expression = self.expression()
-                    return Nodes.VariableAssignment(token, expression)
-                elif token.value == FN_OPERATOR:
-                    self.advance()
-                    return Nodes.Node()
-
-                raise Exception('Invalid Operator')
-            case TokenType.NUMBER:
+        if token.type is TokenType.OPERATOR:
+            # Unary Operator
+            if token.value in (PLUS_OPERATOR, MINUS_OPERATOR):
                 self.advance()
-                return Nodes.Number(token)
-            case TokenType.LEFT_PAR:
+                factor = self.factor()
+                return Nodes.UnaryOp(token, factor)
+
+            # Variable assign
+            elif token.value == EQ_OPERATOR:
                 self.advance()
                 expression = self.expression()
-                if self.token.type is TokenType.RIGHT_PAR:
-                    self.advance()
-                    return expression
-            case TokenType.IDENTIFIER:
+                return Nodes.VariableAssignment(token, expression)
+            elif token.value == FN_OPERATOR:
                 self.advance()
-                return Nodes.Identifier(token)
-            case TokenType.KEYWORD:
+                return Nodes.Node()
+
+            raise Exception('Invalid Operator')
+        elif token.type is TokenType.NUMBER:
+            self.advance()
+            return Nodes.Number(token)
+        elif token.type is TokenType.LEFT_PAR:
+            self.advance()
+            expression = self.expression()
+            assert not isinstance(expression, Nodes.FunctionAssignment)
+            if self.token.type is TokenType.RIGHT_PAR:
                 self.advance()
-                # Function assignment
-                if token.value == FN_KEYWORD:
-                    function_identifier = self.factor()
-                    variables = []
+                return expression
+        elif token.type is TokenType.IDENTIFIER:
+            self.advance()
+            return Nodes.Identifier(token)
+        elif token.type is TokenType.KEYWORD:
+            self.advance()
+            # Function assignment
+            if token.value == FN_KEYWORD:
+                function_identifier = self.factor()
+                variables = []
+                last_return = self.factor()
+
+                # Collect variables until '=>' operator is met
+                while isinstance(last_return, Nodes.Identifier):
+                    variables.append(last_return)
                     last_return = self.factor()
 
-                    # Collect variables until '=>' operator is met
-                    while isinstance(last_return, Nodes.Identifier):
-                        variables.append(last_return)
-                        last_return = self.factor()
+                expression = self.expression()
+                return Nodes.FunctionAssignment(function_identifier, variables, expression)
 
-                    expression = self.expression()
-                    return Nodes.FunctionAssignment(function_identifier, variables, expression)
-
-                raise Exception('Unknown Keyword')
+            raise Exception('Unknown Keyword')
 
         raise Exception('Unknown Token Type')
 
@@ -377,12 +384,13 @@ class Parser:
             left_operand = Nodes.BinOp(left_operand, operator, right_operand)
 
         return left_operand
+
+
 # </Parser>
 
 
 # <Objects>
 class Objects:
-
     class Object:
         def __init__(self):
             pass
@@ -440,6 +448,8 @@ class Objects:
 
         def __str__(self):
             return f'{self.name} [{" ".join(map(str, self.variables))}] => {self.body}'
+
+
 # </Object>
 
 
@@ -453,15 +463,22 @@ class Interpreter:
         self.variables = variables or dict()
         self.functions = functions or dict()
 
-    def input(self, code: str) -> int:
+    def input(self, code: str) -> int | str:
+        if not code.strip():
+            return ''
         tokens = Lexer(code).tokenize()
         ast = Parser(tokens).generateAST()
         res = self.visit(ast)
         if isinstance(res, Objects.Number):
             return res.value
+        else:
+            return ''
 
     def input_ast(self, ast: Nodes.Node) -> Objects.Object:
-        return self.visit(ast)
+        res = self.visit(ast)
+        if isinstance(res, int):
+            res = Objects.Number(res)
+        return res
 
     def visit(self, node: Nodes.Node) -> Objects.Object:
         if isinstance(node, Nodes.Number):
@@ -481,17 +498,21 @@ class Interpreter:
 
         raise Exception('Unknown Node')
 
-
     def visit_number_node(self, node: Nodes.Number) -> Objects.Number:
         return Objects.Number(int(node.token.value))
 
     def visit_identifier_node(self, node: Nodes.Identifier) -> Objects.Object:
         name = node.name
         if name in self.variables:
-            return self.variables[name]
+            if isinstance(self.variables[name], Nodes.Number):
+                return int(self.variables[name].token.value)
+            return self.variables[name].value
 
         if name in self.functions:
-            return self.functions[name]
+            function = self.functions[name]
+            if function.arity == 0:
+                return function.call([])
+            return function
         raise Exception('Unknown identifier')
 
     def visit_var_assign_node(self, node: Nodes.VariableAssignment) -> Objects.Object:
@@ -531,6 +552,7 @@ class Interpreter:
                 pocket.append(arg)
         formatted_arguments.extend(pocket)
 
+        assert function.arity == len(formatted_arguments)
         return function.call(formatted_arguments)
 
     def visit_unary_op_node(self, node: Nodes.UnaryOp) -> Objects.Number:
@@ -551,6 +573,10 @@ class Interpreter:
             left = Objects.Number(int(left.token.value))
         if isinstance(right, Nodes.Number):
             right = Objects.Number(int(right.token.value))
+        if isinstance(left, int):
+            left = Objects.Number(left)
+        if isinstance(right, int):
+            right = Objects.Number(right)
 
         if not isinstance(left, Objects.Number) or not isinstance(right, Objects.Number):
             raise Exception('Binary operation can be applied only to numbers')
@@ -574,8 +600,8 @@ class Interpreter:
         raise Exception('Unknown operator')
 # </Interpreter>
 
+
 interpreter = Interpreter()
 interpreter.input("fn avg x y => (x + y) / 2")
-var = interpreter.input("avg 7 2")
-print(var)
-
+interpreter.input("fn echo x => x")
+print(interpreter.input("avg echo 2 echo 10"))
