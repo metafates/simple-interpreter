@@ -198,27 +198,27 @@ class Nodes:
         def __init__(
                 self,
                 function: Nodes.Identifier,
-                variables: list[Nodes.Identifier],
+                arguments: list[Nodes.Identifier],
                 expression: Nodes.Node
         ):
             super().__init__()
             self.function = function
-            self.variables = variables
+            self.arguments = arguments
             self.expression = expression
 
         def __str__(self):
-            variables_names = ' '.join(map(lambda v: v.name, self.variables))
-            return f'({self.function.name} [{variables_names}] = {self.expression})'
+            variables_names = ' '.join(map(lambda v: v.name, self.arguments))
+            return f'({FN_KEYWORD} {self.function.name} [{variables_names}] => {self.expression})'
 
     class FunctionCall(Node):
-        def __init__(self, function: Token, variables: list[Nodes.Identifier]):
+        def __init__(self, function: Nodes.Identifier, arguments: list[Nodes.Identifier]):
             super().__init__()
             self.function = function
-            self.variables = variables
+            self.arguments = arguments
 
         def __str__(self):
-            variables_names = ' '.join(map(lambda v: v.name, self.variables))
-            return f'({self.token.value}[{variables_names}])'
+            # arguments = ' '.join(map(lambda v: v.name, self.arguments))
+            return f'({self.function.name}[{" ".join(map(str, self.arguments))}])'
 # </NODES>
 
 
@@ -279,13 +279,6 @@ class Parser:
                     return expression
             case TokenType.IDENTIFIER:
                 self.advance()
-                # TODO: Check if it is function call (and maybe nested) or just identifier
-                if self.token.type is TokenType.IDENTIFIER:
-                    last_return = self.token
-                    ...
-                    while isinstance(last_return, Nodes.Identifier):
-                        ...
-
                 return Nodes.Identifier(token)
             case TokenType.KEYWORD:
                 self.advance()
@@ -309,18 +302,27 @@ class Parser:
 
     def term(self) -> Nodes.Node:
         term_operators = (MUL_OPERATOR, DIV_OPERATOR, REM_OPERATOR)
-        return self.bin_op(self.factor, term_operators)
+        return self.bin_op_or_function_call(self.factor, term_operators)
 
     def expression(self) -> Nodes.Node:
         expression_operators = (PLUS_OPERATOR, MINUS_OPERATOR)
-        return self.bin_op(self.term, expression_operators)
+        return self.bin_op_or_function_call(self.term, expression_operators)
 
-    def bin_op(
+    def bin_op_or_function_call(
             self,
-            fn: Callable[..., Nodes.Node],
+            fn: Callable[..., Nodes.Node | Nodes.Identifier],
             operators: tuple[str, ...]
-    ) -> Nodes.BinOp:
+    ) -> Nodes.BinOp | Nodes.Node:
         left_operand = fn()
+
+        # Check if it is function call
+        # Example: add echo 4 echo 3 -> 7.
+        arguments = []
+        while self.token.type in (TokenType.IDENTIFIER, TokenType.NUMBER):
+            arguments.append(self.factor())
+
+        if arguments:
+            return Nodes.FunctionCall(left_operand, arguments)
 
         while self.token.value in operators:
             operator = self.token
@@ -332,7 +334,7 @@ class Parser:
 # </Parser>
 
 
-a = Lexer("fn doStuff x y => (x + y) * y")
+a = Lexer("fn addFunction f g value => f value + g value")
 tokens = a.tokenize()
 
 b = Parser(tokens)
