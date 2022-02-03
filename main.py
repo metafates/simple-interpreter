@@ -453,10 +453,12 @@ class Interpreter:
         self.variables = variables or dict()
         self.functions = functions or dict()
 
-    def input(self, code: str) -> Objects.Object:
+    def input(self, code: str) -> int:
         tokens = Lexer(code).tokenize()
         ast = Parser(tokens).generateAST()
-        return self.visit(ast)
+        res = self.visit(ast)
+        if isinstance(res, Objects.Number):
+            return res.value
 
     def input_ast(self, ast: Nodes.Node) -> Objects.Object:
         return self.visit(ast)
@@ -515,31 +517,28 @@ class Interpreter:
     def visit_function_call_node(self, node: Nodes.FunctionCall) -> Objects.Object:
         function = self.functions[node.function.name]
         arguments = node.arguments
-        # arguments_to_call = arguments[:]
-        # for i in range(len(arguments)):
-        #     # print(arguments_to_call, 'initial args')
-        #     # print(arguments_to_call, 'after')
-        #     # print(arguments[-i], type(arguments[-i]))
-        #     if isinstance(arguments[-i], Nodes.Identifier) and arguments[-i].name in self.functions:
-        #         func = self.functions[arguments[-i].name]
-        #         # print(func)
-        #         arity = func.arity
-        #         args = arguments_to_call[-arity:]
-        #         print(func, args, arity, arguments[-i], i)
-        #
-        #         arguments_to_call = arguments_to_call[:-arity-1]
-        #         arguments_to_call.append(func.call(args))
+        formatted_arguments = []
+        pocket = []
+        while arguments:
+            arg = arguments.pop()
+            if isinstance(arg, Nodes.Identifier) and arg.name in self.functions:
+                f = self.functions[arg.name]
+                arity = f.arity
+                args_for_f = pocket[:arity]
+                pocket = pocket[arity:]
+                pocket.append(f.call(args_for_f))
+            else:
+                pocket.append(arg)
+        formatted_arguments.extend(pocket)
 
-
-        # TODO: implement function call
-        return function.call(arguments)
+        return function.call(formatted_arguments)
 
     def visit_unary_op_node(self, node: Nodes.UnaryOp) -> Objects.Number:
         num = self.visit(node.operand)
         if not isinstance(num, Objects.Number):
             raise Exception('Unary operation can be applied only to numbers')
 
-        if node.operator.type is MINUS_OPERATOR:
+        if node.operator.value is MINUS_OPERATOR:
             num *= Objects.Number(-1)
 
         return num
@@ -547,8 +546,6 @@ class Interpreter:
     def visit_binary_op_node(self, node: Nodes.BinOp) -> Objects.Number:
         left = self.visit(node.left_operand)
         right = self.visit(node.right_operand)
-
-        print(type(left), type(right))
 
         if isinstance(left, Nodes.Number):
             left = Objects.Number(int(left.token.value))
@@ -578,9 +575,7 @@ class Interpreter:
 # </Interpreter>
 
 interpreter = Interpreter()
-interpreter.input("fn echo x => x")
-interpreter.input("fn minus x y => x - y")
-interpreter.input("fn add x y => x + y")
-var = interpreter.input("add echo 5 minus 4 echo 3")
+interpreter.input("fn avg x y => (x + y) / 2")
+var = interpreter.input("avg 7 2")
 print(var)
 
