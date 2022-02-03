@@ -430,6 +430,7 @@ class Objects:
             super().__init__()
             self.name = name
             self.variables = variables
+            self.arity = len(variables)
             self.body = body
 
         def call(self, arguments: list[Nodes.Identifier]) -> Objects.Object:
@@ -457,7 +458,6 @@ class Interpreter:
         ast = Parser(tokens).generateAST()
         return self.visit(ast)
 
-    # TODO: remove later
     def input_ast(self, ast: Nodes.Node) -> Objects.Object:
         return self.visit(ast)
 
@@ -515,6 +515,21 @@ class Interpreter:
     def visit_function_call_node(self, node: Nodes.FunctionCall) -> Objects.Object:
         function = self.functions[node.function.name]
         arguments = node.arguments
+        # arguments_to_call = arguments[:]
+        # for i in range(len(arguments)):
+        #     # print(arguments_to_call, 'initial args')
+        #     # print(arguments_to_call, 'after')
+        #     # print(arguments[-i], type(arguments[-i]))
+        #     if isinstance(arguments[-i], Nodes.Identifier) and arguments[-i].name in self.functions:
+        #         func = self.functions[arguments[-i].name]
+        #         # print(func)
+        #         arity = func.arity
+        #         args = arguments_to_call[-arity:]
+        #         print(func, args, arity, arguments[-i], i)
+        #
+        #         arguments_to_call = arguments_to_call[:-arity-1]
+        #         arguments_to_call.append(func.call(args))
+
 
         # TODO: implement function call
         return function.call(arguments)
@@ -564,7 +579,8 @@ class Interpreter:
 
 interpreter = Interpreter()
 interpreter.input("fn echo x => x")
+interpreter.input("fn minus x y => x - y")
 interpreter.input("fn add x y => x + y")
-var = interpreter.input("add echo 4 echo 3")
+var = interpreter.input("add echo 5 minus 4 echo 3")
 print(var)
 
