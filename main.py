@@ -443,7 +443,7 @@ class Objects:
 
         def call(self, arguments: list[Nodes.Identifier]) -> Objects.Object:
             binded_args = {var.name: arguments[i] for i, var in enumerate(self.variables)}
-            scope = Interpreter(variables=binded_args)
+            scope = Interpreter(variables=binded_args, scope=self.name)
             return scope.input_ast(self.body)
 
         def __str__(self):
@@ -459,9 +459,10 @@ class Interpreter:
     variables: dict[str, Objects.Variable]
     functions: dict[str, Objects.Function]
 
-    def __init__(self, variables=None, functions=None):
+    def __init__(self, variables=None, functions=None, scope="file"):
         self.variables = variables or dict()
         self.functions = functions or dict()
+        self.scope = scope
 
     def input(self, code: str) -> int | str:
         if not code.strip():
@@ -522,6 +523,7 @@ class Interpreter:
         variable_value = self.visit(node.expression)
         variable = Objects.Variable(variable_name, variable_value)
         self.variables[variable.name] = variable
+
         return variable.value
 
     def visit_func_assign_node(self, node: Nodes.FunctionAssignment) -> Objects.Function:
@@ -548,6 +550,8 @@ class Interpreter:
                 args_for_f = pocket[:arity]
                 pocket = pocket[arity:]
                 pocket.append(f.call(args_for_f))
+            if isinstance(arg, Nodes.Identifier) and arg.name in self.variables:
+                pocket.append(self.variables[arg.name])
             else:
                 pocket.append(arg)
         formatted_arguments.extend(pocket)
@@ -602,6 +606,10 @@ class Interpreter:
 
 
 interpreter = Interpreter()
-interpreter.input("fn avg x y => (x + y) / 2")
-interpreter.input("fn echo x => x")
-print(interpreter.input("avg echo 2 echo 10"))
+while True:
+    try:
+        print(interpreter.input(input('>>> ')))
+    except KeyboardInterrupt:
+        exit()
+    except Exception as e:
+        print(f'Error! {e}')

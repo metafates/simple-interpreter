@@ -1,9 +1,9 @@
-# Simple interpretator
+# Simple language interpreter
 
-1-kyu kata
+An interpreter for a simple programming language
+with the support of mathematical expressions, variable assignment, and function definition.
 
-
-Supports functions, variables and math expressions
+## Examples
 
 ```
 >>> fn avg x y => (x + y) / y
