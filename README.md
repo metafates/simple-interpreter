@@ -6,7 +6,7 @@ with the support of mathematical expressions, variable assignment, and function 
 ## Examples
 
 ```
->>> fn avg x y => (x + y) / y
+>>> fn avg x y => (x + y) / 2
 >>> avg 1 10
 5
 >>> a = 10
